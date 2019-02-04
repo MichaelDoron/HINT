@@ -45,13 +45,11 @@ for (number_of_samples in c(1, 10, 100, 1000)) {
             for (var2 in (var1 + 1) : number_of_variables) {
                 interaction_colnames <- c(interaction_colnames, sprintf('V%s:V%s', var1, var2))
                 pair_interactions <- c(pair_interactions, interact.gbm(rf, DAT, i.var = c(var1,var2)))
-                # print(sprintf('Done interactions var %s and var %s',var1, var2))
             }
         }
         end.time <- Sys.time()
         pair_interactions[is.na(pair_interactions)] = 0
         true_pairs  = true_pairs[,2:3]
-        # true_pairs <- get_true_pairs(iteration, number_of_samples, task)
         true_pairs_names = NULL
         for (ind in 1:dim(true_pairs)[1]) {
             if ((true_pairs[ind,2] + 1) > true_pairs[ind,1] + 1){

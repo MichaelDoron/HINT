@@ -16,7 +16,6 @@ task = 'vin'
 number_of_variables = 10
 
 for (number_of_samples in c(1, 10, 100, 1000)) {
-    # print(number_of_samples)
     rocs = NULL
     y_trues = NULL
     predictions = NULL
