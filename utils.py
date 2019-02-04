@@ -91,7 +91,7 @@ def measure_local_accuracy(model, number_of_core_samples, step_size, name, outpu
   output_name = model.output_names[0]
   interaction_maps = list(futures.map(functools.partial(create_interaction_map, model, hessian, core_feature_vectors, output_name, 'nearest'), model.feature_pairs))
   local_ranking = list(futures.map(functools.partial(rank_samples_in_pair, model, centers, magnitudes, dimensions), zip(interaction_maps, model.feature_pairs)))
-  ranking = np.concatenate(np.array(local_ranking), axis=0)
+  ranking = np.concatenate(np.array(local_ranking), axis=1)
   accuracies = average_precision_score(ranking[1,:], np.abs(ranking[0,:]))
   ROCs = np.array(precision_recall_curve(ranking[1,:], np.abs(ranking[0,:])))
 

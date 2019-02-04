@@ -8,7 +8,7 @@ from scoop import futures
 from scipy.stats import ortho_group
 import time
 
-number_of_variables = 10
+number_of_variables = 2
 number_of_phenomena = 3
 sort_key = lambda x : int(x[1:])
 feature_names = sorted(['X{}'.format(ind) for ind in range(1, number_of_variables + 1)], key=sort_key)

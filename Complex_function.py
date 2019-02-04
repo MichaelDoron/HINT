@@ -21,15 +21,17 @@ for feature_ind_1 in range(len(feature_names)):
 
 perturbation_feature_pairs = []
 for feature_ind_1 in range(len(feature_names)):
-  for feature_ind_2 in range(len(feature_names)):
+  for feature_ind_2 in range(feature_ind_1 + 1, len(feature_names)):
     perturbation_feature_pairs.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
 
 perturbation_status_columns = []
 perturbation_status_columns.append('core')
 for feature_ind_1 in range(len(feature_names)):
   perturbation_status_columns.append(feature_names[feature_ind_1])
+for feature_ind_1 in range(len(feature_names)):
   for feature_ind_2 in range(feature_ind_1 + 1, len(feature_names)):
     perturbation_status_columns.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
+
 
 
 feature_limits = {
