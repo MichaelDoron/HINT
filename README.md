@@ -29,13 +29,14 @@ python hint.py -m Complex_function -o results -n 1000 --create_data --rank_globa
 
 #### Local (m=2):
 
-hint.py -m Local -o results -n 10 --create_data --rank_global --measure_global_accuracy
 
-hint.py -m Local -o results -n 100 --create_data --rank_global --measure_global_accuracy
+python hint.py -m Local -o results -n 10 --create_data --measure_local_accuracy --name Local
 
-hint.py -m Local -o results -n 1000 --create_data --rank_global --measure_global_accuracy
+python hint.py -m Local -o results -n 100 --create_data --measure_local_accuracy --name Local
 
-hint.py -m Local -o results -n 10000 --create_data --rank_global --measure_global_accuracy
+python hint.py -m Local -o results -n 1000 --create_data --measure_local_accuracy --name Local
+
+python hint.py -m Local -o results -n 10000 --create_data --measure_local_accuracy --name Local
 
 
 
