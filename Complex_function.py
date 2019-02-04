@@ -14,6 +14,24 @@ m = len(feature_names)
 feature_pairs = sorted([sorted(pair) for pair in itertools.combinations(range(len(feature_names)), 2)])
 feature_pairs = ['{} and {}'.format(feature_names[p[0]], feature_names[p[1]]) for p in feature_pairs]
 
+normalization_feature_pairs = []
+for feature_ind_1 in range(len(feature_names)):
+  for feature_ind_2 in range(feature_ind_1 + 1, len(feature_names)):
+    normalization_feature_pairs.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
+
+perturbation_feature_pairs = []
+for feature_ind_1 in range(len(feature_names)):
+  for feature_ind_2 in range(len(feature_names)):
+    perturbation_feature_pairs.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
+
+perturbation_status_columns = []
+perturbation_status_columns.append('core')
+for feature_ind_1 in range(len(feature_names)):
+  perturbation_status_columns.append(feature_names[feature_ind_1])
+  for feature_ind_2 in range(feature_ind_1 + 1, len(feature_names)):
+    perturbation_status_columns.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
+
+
 feature_limits = {
   'X{}'.format(ind) : (0,1) for ind in range(1, 10 + 1)
   }

@@ -16,6 +16,26 @@ m = len(feature_names)
 feature_pairs = sorted([sorted(pair) for pair in itertools.combinations(range(len(feature_names)), 2)])
 feature_pairs = ['{} and {}'.format(feature_names[p[0]], feature_names[p[1]]) for p in feature_pairs]
 
+normalization_feature_pairs = []
+for feature_ind_1 in range(len(feature_names)):
+  for feature_ind_2 in range(feature_ind_1 + 1, len(feature_names)):
+    normalization_feature_pairs.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
+
+perturbation_feature_pairs = []
+for feature_ind_1 in range(len(feature_names)):
+  for feature_ind_2 in range(feature_ind_1 + 1, len(feature_names)):
+    perturbation_feature_pairs.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
+
+perturbation_status_columns = []
+perturbation_status_columns.append('core')
+for feature_ind_1 in range(len(feature_names)):
+  perturbation_status_columns.append(feature_names[feature_ind_1])
+for feature_ind_1 in range(len(feature_names)):
+  for feature_ind_2 in range(feature_ind_1 + 1, len(feature_names)):
+    perturbation_status_columns.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
+
+
+
 feature_limits = {
   'X{}'.format(ind) : (-5,5) for ind in range(1, 100 + 1)
   }
@@ -58,7 +78,7 @@ def set_ground_truth(number_of_core_samples, step_size, name, output_path):
   pickle.dump(super_function, open('{}/model_{}_{}_{}.cPickle'.format(output_path,number_of_core_samples, step_size, name),'wb'))  
 
 def get_ground_truth(output_path,number_of_core_samples, step_size, name):
-  return pickle.load(open('{}/Gaussian_100_true_pairs_{}_{}_{}.cPickle'.format(output_path,number_of_core_samples, step_size, name),'rb'))
+  return pickle.load(open('{}/true_pairs_{}_{}_{}.cPickle'.format(output_path,number_of_core_samples, step_size, name),'rb'))
 
 def generate_feature_vectors(number_of_core_samples, step_size):
   start = time.time()
