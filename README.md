@@ -2,7 +2,7 @@
 HINT: Discovering Unexpected Local Nonlinear Interactions in Scientific Black-box Models
 
 ## To run HINT on browser (with limited functionality)
-https://hub.gke.mybinder.org/user/michaeldoron-hint-zyoamyhc/notebooks/HINT.ipynb
+https://mybinder.org/v2/gh/MichaelDoron/HINT/master?filepath=HINT.ipynb
 
 ## To reproduce paper results:
 
