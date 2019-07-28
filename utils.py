@@ -82,7 +82,7 @@ def measure_local_accuracy(model, number_of_core_samples, step_size, name, outpu
   :returns: hessian matrix, with the core sample index as rows and feature pair as column name
   """
   feature_vectors = pd.DataFrame(np.load('{}/feature_vectors_{}_{}_{}.npy'.format(output_path, number_of_core_samples, step_size, name)), index = np.arange(number_of_core_samples), columns=pd.MultiIndex.from_product([model.perturbation_status_columns, model.feature_names], names=['perturbation_status','features']))
-  outputs = pd.DataFrame(np.load('{}/outputs_{}_{}_{}.npy'.format(output_path, number_of_core_samples, step_size, name)), index = np.arange(number_of_core_samples), columns=pd.MultiIndex.from_product([model.output_names, model.perturbation_status_columns], names=['outputs','perturbation_status']))
+  outputs = pd.DataFrame(np.load('{}/outputs_{}_{}_{}.npy'.format(output_path, number_of_core_samples, step_size, name)), index = np.arange(number_of_core_samples), columns=pd.MultiIndex.from_product([model.output_names, model.perturbation_status_columns_output], names=['outputs','perturbation_status']))
   hessian = calculate_hessian(model, outputs, step_size)
   (centers, magnitudes, dimensions) = model.get_local_ground_truth(output_path,number_of_core_samples, step_size, name)
 
@@ -115,7 +115,7 @@ def normalize_outputs(model, outputs):
   new_outputs = outputs.copy()
   for output_name in model.output_names:
     if (outputs.loc[:, output_name].max().max() == outputs.loc[:, output_name].min().min()):
-      new_outputs.loc[:, output_name] = outputs.loc[:, output_name]
+      new_outputs.loc[:, output_name] = outputs.loc[:, output_name].values
     else:
       new_outputs.loc[:, output_name] = ((new_outputs.loc[:, output_name] - new_outputs.loc[:, output_name].min().min()) / np.abs((new_outputs.loc[:, output_name].max().max() - new_outputs.loc[:, output_name].min().min()))).values
   return new_outputs
@@ -129,7 +129,61 @@ def normalize_inputs(model, feature_vectors):
       new_feature_vectors.loc[:, (feature)] = ((new_feature_vectors.loc[:, (feature)] - new_feature_vectors.loc[:, (feature)].min()) / (new_feature_vectors.loc[:, (feature)].max() - new_feature_vectors.loc[:, (feature)].min())).values
   return new_feature_vectors
 
-def rank_local(model, number_of_core_samples, step_size, name, threshold, plot, output_path):
+def plot_interaction_map(model, name, matrix, output_name, first_variable, second_variable, x_coord, y_coord, output_path):
+  """
+  Plots a map of the parameter space for two input parameters, with the areas with more nonlinearity colored white
+  
+  :param ax: The axes on which to plot
+  :param args: The arguments for the plot - 
+                 The matrix to plot,
+                 the name of the first variable
+                 The name of the second variable,
+                 The name of the first variable, as a key to the parameter limits dictionary
+                 The name of the second variable, as a key to the parameter limits dictionary
+                 the x coordinate of the sample being studied
+                 the y coordinate of the sample being studied
+  :returns: The axes with the plotted sample
+  """  
+  import matplotlib
+  import matplotlib.cm as cm
+  import matplotlib.pyplot as plt
+
+  font = {'size'   : 14}
+
+  matplotlib.rc('font', **font)
+  fig = plt.figure(figsize=(5,5))
+  ax = plt.subplot()
+
+  maxValue = np.max(np.abs(matrix))
+  img = ax.imshow((matrix), cmap = cm.bwr, origin='lower', vmin = -min(maxValue, 6), vmax = min(maxValue, 6), interpolation='spline16')
+
+  first_variable = '{}'.format(first_variable)
+  second_variable = '{}'.format(second_variable)
+  ax.set_ylabel(r'$x_i$ = ' + first_variable)
+  ax.set_xlabel(r'$y_i$ = ' + second_variable)
+  ax.axes.set_xticks([0, 50, 99])
+  ax.axes.set_yticks([0, 50, 99])
+  xticks = np.linspace(np.array(model.feature_limits[first_variable]).min(), np.array(model.feature_limits[first_variable]).max(), 3)
+  yticks = np.linspace(np.array(model.feature_limits[second_variable]).min(), np.array(model.feature_limits[second_variable]).max(), 3)
+  ax.scatter([x_coord], [y_coord], marker='o', color='white', s = 250, edgecolors='black', linewidth=3)
+
+  ax.set_yticklabels([xticks[tind] for tind in range(3)])
+  ax.set_xticklabels([yticks[tind] for tind in range(3)])
+  ax.axis([0, (100) - 1, 0, (100) - 1])
+
+  # ax.scatter([x_coord_linear], [y_coord_linear], marker='o', color='blue', s = 250, edgecolors='black', linewidth=3)
+  t = ax.set_title(r'$\mathregular{\frac{\delta ^2 F(\bar{x})}{\delta x_i \delta x_j}}$')
+  # t = ax.set_title('{} and {} - '.format(first_variable, second_variable) + r'$\mathregular{\frac{\delta ^2 F(\bar{x})}{\delta x_i \delta x_j}}$')
+  t.set_position([.5, 1.025])
+  from mpl_toolkits.axes_grid1 import make_axes_locatable
+  divider = make_axes_locatable(ax)
+  cax = divider.append_axes("right", size="5%", pad=0.05)
+  cb = plt.colorbar(img, cax=cax)
+  cb.set_label("Nomralized mixed derivative", rotation=90)
+  plt.savefig('{}/{}_{}_{}_{}_nonlinear_map.pdf'.format(output_path, name, output_name, first_variable, second_variable), transparent=True, bbox_inches='tight', format='pdf', dpi=600)
+  # plt.close('all')
+  
+def rank_local(model, number_of_core_samples, step_size, name, threshold, output_path, top_k_to_plot):
   """
   Computes the mixed derivative for each sample, using finite differences mathod
   
@@ -141,21 +195,36 @@ def rank_local(model, number_of_core_samples, step_size, name, threshold, plot, 
   feature_vectors = pd.DataFrame(np.load('{}/feature_vectors_{}_{}_{}.npy'.format(output_path, number_of_core_samples, step_size, name)), index = np.arange(number_of_core_samples), columns=pd.MultiIndex.from_product([model.perturbation_status_columns, model.feature_names], names=['perturbation_status','features']))
   core_feature_vectors = feature_vectors.loc[:, 'core'].copy()
   core_feature_vectors = normalize_inputs(model, core_feature_vectors)
-  outputs = pd.DataFrame(np.load('{}/outputs_{}_{}_{}.npy'.format(output_path, number_of_core_samples, step_size, name)), index = np.arange(number_of_core_samples), columns=pd.MultiIndex.from_product([model.output_names, model.perturbation_status_columns], names=['outputs','perturbation_status']))
-  outputs = normalize_outputs(model, outputs)
+  raw_outputs = pd.DataFrame(np.load('{}/outputs_{}_{}_{}.npy'.format(output_path, number_of_core_samples, step_size, name)), index = np.arange(number_of_core_samples), columns=pd.MultiIndex.from_product([model.output_names, model.perturbation_status_columns_output], names=['outputs','perturbation_status']))
+  outputs = normalize_outputs(model, pd.DataFrame(raw_outputs))
   hessian = calculate_hessian(model, outputs, step_size)
   hessian = denoise_hessian(hessian)
+  np.save('{}/hessian_{}_{}_{}'.format(output_path,number_of_core_samples, step_size, name), hessian)
   
   ranking = []
   for output_name in model.output_names:
     interaction_maps = list(futures.map(functools.partial(create_interaction_map, model, hessian, core_feature_vectors, output_name, 'linear'), model.feature_pairs))
-    local_ranking = list(futures.map(functools.partial(get_max_filters), interaction_maps))
-    ranking_indices = np.argsort(local_ranking)[::-1]
-    ranking.append((output_name, list(np.array(model.feature_pairs)[np.array(ranking_indices)]), np.array(local_ranking)[ranking_indices]))
+    for ind in range(len(model.feature_pairs)):
+      first_variable, second_variable = model.feature_pairs[ind].split(' and ')
+      if ind < top_k_to_plot:
+        model.set_ground_truth(number_of_core_samples, step_size, name, output_path)
+        most_nonlinear_sample = hessian[output_name][model.feature_pairs[ind]].abs().idxmax()
+        y_coord = 100 * (feature_vectors.loc[most_nonlinear_sample, 'core'][first_variable] - model.feature_limits[first_variable][0]) / (model.feature_limits[first_variable][1] - model.feature_limits[first_variable][0])
+        x_coord = 100 * (feature_vectors.loc[most_nonlinear_sample, 'core'][second_variable] - model.feature_limits[second_variable][0]) / (model.feature_limits[second_variable][1] - model.feature_limits[second_variable][0])
+        plot_interaction_map(model, name, interaction_maps[ind], output_name, first_variable, second_variable, x_coord, y_coord, output_path)
+        features = []
+        features.append(feature_vectors.loc[most_nonlinear_sample, 'core'])
+        features.append(feature_vectors.loc[most_nonlinear_sample, first_variable])
+        features.append(feature_vectors.loc[most_nonlinear_sample, second_variable])
+        features.append(feature_vectors.loc[most_nonlinear_sample, model.feature_pairs[ind]])
+        features = np.array(features)
+    # local_ranking = list(futures.map(functools.partial(get_max_filters), interaction_maps))
+    # ranking_indices = np.argsort(local_ranking)[::-1]
+    # ranking.append((output_name, list(np.array(model.feature_pairs)[np.array(ranking_indices)]), np.array(local_ranking)[ranking_indices]))
   pickle.dump(obj = ranking, file = open('{}/local_ranking_{}_{}_{}.pickle'.format(output_path,number_of_core_samples, step_size, name),'wb'))
   return ranking
 
-def rank_global(model, number_of_core_samples, step_size, name, plot, output_path):
+def rank_global(model, number_of_core_samples, step_size, name, output_path, top_k_to_plot):
   """
   Computes the mixed derivative for each sample, using finite differences mathod
   
@@ -173,6 +242,20 @@ def rank_global(model, number_of_core_samples, step_size, name, plot, output_pat
   for output_name in model.output_names:
     sorted_pairs = ranked_hessian.loc[output_name].loc[model.normalization_feature_pairs].sort_values()[::-1]
     ranking.append((output_name, list(sorted_pairs.index), sorted_pairs.values))
+  if top_k_to_plot:
+    feature_vectors = pd.DataFrame(np.load('{}/feature_vectors_{}_{}_{}.npy'.format(output_path, number_of_core_samples, step_size, name)), index = np.arange(number_of_core_samples), columns=pd.MultiIndex.from_product([model.perturbation_status_columns, model.feature_names], names=['perturbation_status','features']))
+    core_feature_vectors = feature_vectors.loc[:, 'core'].copy()
+    core_feature_vectors = normalize_inputs(model, core_feature_vectors)
+    interaction_maps = list(futures.map(functools.partial(create_interaction_map, model, hessian, core_feature_vectors, output_name, 'linear'), model.feature_pairs))
+    ranked_feature_pairs = np.array(ranking)[:, 1][0][:top_k_to_plot]
+    for pair_name in ranked_feature_pairs:
+      ind = model.feature_pairs.index(pair_name)
+      first_variable, second_variable = model.feature_pairs[ind].split(' and ')
+      most_nonlinear_sample = hessian[output_name][model.feature_pairs[ind]].abs().idxmax()
+      y_coord = 100 * (feature_vectors.loc[most_nonlinear_sample, 'core'][first_variable] - model.feature_limits[first_variable][0]) / (model.feature_limits[first_variable][1] - model.feature_limits[first_variable][0])
+      x_coord = 100 * (feature_vectors.loc[most_nonlinear_sample, 'core'][second_variable] - model.feature_limits[second_variable][0]) / (model.feature_limits[second_variable][1] - model.feature_limits[second_variable][0])
+      plot_interaction_map(model, name, interaction_maps[ind], output_name, first_variable, second_variable, x_coord, y_coord, output_path)
+
   pickle.dump(obj = ranking, file = open('{}/global_ranking_{}_{}_{}.pickle'.format(output_path,number_of_core_samples, step_size, name),'wb'))
   return ranking
 
