@@ -117,14 +117,10 @@ def set_ground_truth(number_of_core_samples, step_size, name, output_path):
             all_sample_param_dicts, a dictionary with the parameters of all samples and their derivative steps
             supplemental_data, the constant parameters for the model of each trial
   """
-  supplemental_data = []
-  for model in range(number_of_models):
-    E_events_lists, I_events_lists = create_presynaptic_spike_trains(input_param_limits)
-    for trial in range(max(1, int(number_of_center_samples / number_of_models))):
-      supplemental_data.append([E_events_lists, I_events_lists])
-  pickle.dump(supplemental_data, open('{}/supplemental_data_{}_{}_{}.cPickle'.format(output_path,number_of_core_samples, step_size, name),'wb'))  
+  pass
 
 def extract_outputs(raw_results):
+  raw_results = np.array([vector['V'] for vector in raw_results])
   outputs = pd.DataFrame(0, index = np.arange(raw_results.shape[0]), columns = output_names)
   outputs['Integral'] = np.sum(raw_results + 90) / 40.0
   return outputs
@@ -144,7 +140,7 @@ def simulate_single_param(args):
   h.load_file("nrngui.hoc")
   h.load_file("import3d.hoc")
   
-  param_dict = args[0]  
+  param_dict = args  
   
   h.dt = 0.025
   h("create soma")
@@ -200,9 +196,9 @@ def simulate_single_param(args):
 
   h.finitialize()
 
-  nmda_cond = param_dict['NMDA']
-  gaba_cond = param_dict['GABA']
-  delay = param_dict['Delay']
+  nmda_cond = param_dict[0]
+  gaba_cond = param_dict[1]
+  delay = param_dict[2]
 
   start = time.time()
   e_syn.gmax = nmda_cond
@@ -237,7 +233,7 @@ def generate_feature_vectors(number_of_core_samples, step_size):
   perturbation_status_columns.append('core')
   for feature_ind_1 in range(len(feature_names)):
     perturbation_status_columns.append(feature_names[feature_ind_1])
-    for feature_ind_2 in range(len(feature_names)):
+    for feature_ind_2 in range(feature_ind_1 + 1, len(feature_names)):
       perturbation_status_columns.append('{} and {}'.format(feature_names[feature_ind_1],feature_names[feature_ind_2]))
   
   data = []
@@ -257,4 +253,21 @@ def generate_feature_vectors(number_of_core_samples, step_size):
   print('Sampling features took {}'.format(end - start))  
   return feature_vectors, []
 
+def simulate_model(feature_vectors, supplemental_data, number_of_core_samples, step_size, name, output_path):
+  start = time.time()
+  stacked_feature_vectors = pd.DataFrame(feature_vectors.stack(0).to_records())
+  features = np.array(stacked_feature_vectors.loc[:, feature_names])
+  indices = stacked_feature_vectors.loc[:, ['level_0','perturbation_status']]
+  raw_results = []
+  for feature_vector in features:
+    raw_results.append(simulate_single_param(feature_vector))
+  individual_outputs = extract_outputs(raw_results)
+  outputs = pd.concat((indices, individual_outputs), axis=1)  
+  outputs = outputs.pivot(index = 'level_0', columns = 'perturbation_status')
+  cols = [(out, pert) for out in output_names for pert in ['core']+feature_names+feature_pairs]
+  # print(outputs)
+  outputs = outputs.loc[:, cols]
+  end = time.time()
+  print('Calculating outputs took {}'.format(end - start))
+  return outputs
 
