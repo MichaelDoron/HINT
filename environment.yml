@@ -1,0 +1,12 @@
+name: HINT
+channels:
+  - conda-forge
+dependencies:
+  - python==2.7
+  - numpy
+  - pandas
+  - matplotlib
+  - scoop
+  - scipy
+  - sklearns
+

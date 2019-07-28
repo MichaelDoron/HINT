@@ -1,6 +1,0 @@
-HINT
-matplotlib
-pandas
-scoop
-scipy
-sklearns
