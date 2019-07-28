@@ -1,7 +1,6 @@
 HINT
 matplotlib
 pandas
-cPickle
 scoop
 scipy
 sklearns
