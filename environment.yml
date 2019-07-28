@@ -12,3 +12,4 @@ dependencies:
     - matplotlib
     - scoop
     - dill
+    - neuron
