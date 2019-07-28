@@ -4,9 +4,10 @@ channels:
 dependencies:
   - python=2.7
   - numpy
+  - pip
   - pip:
     - pandas
     - scipy
-    - sklearns
+    - sklearn
     - matplotlib
     - scoop
