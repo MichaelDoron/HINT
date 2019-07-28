@@ -7,6 +7,6 @@ dependencies:
   - pandas
   - matplotlib
   - scoop
-  - scipy
-  - sklearns
-
+  - pip:
+    - scipy
+    - sklearns
